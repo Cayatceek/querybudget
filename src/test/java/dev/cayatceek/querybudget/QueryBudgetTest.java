@@ -34,7 +34,7 @@ final class QueryBudgetTest {
                 }
             }
             assertEquals(3, scope.count());
-            assertEquals(1, scope.countsBySql().get("SELECT * FROM items WHERE id = ?"));
+            assertEquals(1L, scope.countsBySql().get("SELECT * FROM items WHERE id = ?").longValue());
             scope.assertMax(3);
             AssertionError error = assertThrows(AssertionError.class, () -> scope.assertMax(2));
             assertTrue(error.getMessage().contains("actual 3"));
