@@ -65,6 +65,44 @@ final class QueryBudgetTest {
     }
 
     @Test
+    void jdbcWrapperAndStatementConnectionDoNotBypassCounting() throws Exception {
+        try (QueryBudget.Scope scope = QueryBudget.begin();
+             Connection connection = dataSource.getConnection()) {
+            assertTrue(connection.isWrapperFor(Connection.class));
+            assertSame(connection, connection.unwrap(Connection.class));
+            try (Statement statement = connection.createStatement()) {
+                assertSame(connection, statement.getConnection());
+                assertTrue(statement.isWrapperFor(Statement.class));
+                assertSame(statement, statement.unwrap(Statement.class));
+                try (Statement fromConnection = statement.getConnection().createStatement()) {
+                    fromConnection.execute("SELECT 1");
+                }
+            }
+            try (PreparedStatement prepared = connection.prepareStatement("SELECT ?")) {
+                assertSame(prepared, prepared.unwrap(PreparedStatement.class));
+                assertSame(connection, prepared.getConnection());
+                prepared.setInt(1, 1);
+                try (var row = prepared.executeQuery()) {
+                    assertTrue(row.next());
+                }
+            }
+            assertEquals(2, scope.count());
+        }
+    }
+
+    @Test
+    void assertionNeverLeaksSqlLiteralsByDefault() throws Exception {
+        try (QueryBudget.Scope scope = QueryBudget.begin();
+             Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.execute("SELECT 'private-user-token'");
+            AssertionError error = assertThrows(AssertionError.class, () -> scope.assertMax(0));
+            assertFalse(error.getMessage().contains("private-user-token"));
+            assertEquals(1, scope.count());
+        }
+    }
+
+    @Test
     void sessionClosesAndDoesNotLeakIntoSubsequentTests() throws Exception {
         try (QueryBudget.Scope scope = QueryBudget.begin()) {
             assertThrows(IllegalStateException.class, QueryBudget::begin);
