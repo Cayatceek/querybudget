@@ -37,7 +37,8 @@ try (QueryBudget.Scope budget = QueryBudget.begin()) {
 - Failed invocations count, too; a batch counts as **one JDBC execution**, not the number of batched statements.
 - Work outside the calling thread or active scope is **not** counted.
 - This is a JDBC instrumentation tool, not yet a Hibernate N+1 detector or query profiler.
-- Do not unwrap the monitoring connection/statement to the underlying driver in measured code: that can bypass instrumentation.
+- Standard JDBC `unwrap(Connection.class)`, `unwrap(Statement.class)`, and statement `getConnection()` return monitored wrappers. Vendor-specific unwrapping and `ResultSet.getStatement()` can still bypass instrumentation and must not be used in measured code.
+- Assertion messages omit raw SQL to avoid exposing literal values in CI logs. Explicit `countsBySql()` diagnostics can still contain sensitive SQL literals; do not log them indiscriminately.
 
 ## Scope and limitations
 

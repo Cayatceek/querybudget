@@ -40,6 +40,12 @@ public final class MonitoringDataSource implements DataSource {
                 if (method.getDeclaringClass() == Object.class) {
                     return objectMethod(proxy, method, args);
                 }
+                if (name.equals("unwrap") || name.equals("isWrapperFor")) {
+                    Class<?> requested = (Class<?>) args[0];
+                    if (requested.isInstance(proxy)) {
+                        return name.equals("isWrapperFor") ? true : requested.cast(proxy);
+                    }
+                }
                 if (name.equals("prepareStatement") || name.equals("prepareCall") || name.equals("createStatement")) {
                     Object statement = invoke(connection, method, args);
                     Class<?> api = name.equals("prepareCall") ? CallableStatement.class
@@ -51,6 +57,16 @@ public final class MonitoringDataSource implements DataSource {
                                 return objectMethod(statementProxy, statementMethod, statementArgs);
                             }
                             String operation = statementMethod.getName();
+                            if (operation.equals("getConnection")) {
+                                return proxy;
+                            }
+                            if (operation.equals("unwrap") || operation.equals("isWrapperFor")) {
+                                Class<?> requested = (Class<?>) statementArgs[0];
+                                if (requested.isInstance(statementProxy)) {
+                                    return operation.equals("isWrapperFor")
+                                        ? true : requested.cast(statementProxy);
+                                }
+                            }
                             boolean execute = operation.equals("execute") || operation.equals("executeQuery")
                                 || operation.equals("executeUpdate") || operation.equals("executeLargeUpdate")
                                 || operation.equals("executeBatch") || operation.equals("executeLargeBatch");

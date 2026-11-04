@@ -54,7 +54,7 @@ public final class QueryBudget {
             if (allowed < 0) throw new IllegalArgumentException("Budget must be nonnegative");
             if (count() > allowed) throw new AssertionError(
                 "SQL query budget exceeded: expected <= " + allowed + ", actual " + count()
-                + "; queries=" + countsBySql());
+                + ". Call countsBySql() explicitly for diagnostics; SQL can contain sensitive literals.");
         }
 
         @Override public void close() {
